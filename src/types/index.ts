@@ -26,11 +26,15 @@ export interface Profile {
   updated_at: string;
 }
 
+// Trading Rule Category
+export type RuleCategory = "Risk Management" | "Profit Taking" | "Discipline" | "General";
+
 // Trading Rule
 export interface TradingRule {
   id: string;
   user_id: string;
   rule_text: string;
+  category: RuleCategory;
   is_default: boolean;
   is_active: boolean;
   sort_order: number;

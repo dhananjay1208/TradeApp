@@ -5,16 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, ClipboardList, Calendar, BarChart3,
-  Target, Shield, Settings, HelpCircle, TrendingUp
+  Flame, Settings, HelpCircle, TrendingUp
 } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/ritual", label: "Ritual", icon: Flame },
   { href: "/journal", label: "Journal", icon: ClipboardList },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/goals", label: "Goals", icon: Target },
-  { href: "/rules", label: "Rules", icon: Shield },
 ];
 
 const bottomItems = [

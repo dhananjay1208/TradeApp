@@ -3,11 +3,11 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, Plus, ClipboardList, Settings } from "lucide-react";
+import { Home, Flame, Plus, ClipboardList, Settings } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/ritual", label: "Ritual", icon: Flame },
   { href: "/trade/new", label: "Add", icon: Plus, isFab: true },
   { href: "/journal", label: "Journal", icon: ClipboardList },
   { href: "/settings", label: "Settings", icon: Settings },

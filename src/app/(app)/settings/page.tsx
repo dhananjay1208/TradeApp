@@ -9,6 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   User,
@@ -19,8 +33,18 @@ import {
   LogOut,
   Loader2,
   Save,
+  Edit2,
+  Plus,
+  Trash2,
 } from "lucide-react";
-import type { Profile, TradingRule } from "@/types";
+import type { Profile, TradingRule, RuleCategory } from "@/types";
+
+const RULE_CATEGORIES: { value: RuleCategory; label: string; color: string }[] = [
+  { value: "Risk Management", label: "Risk Management", color: "text-warning" },
+  { value: "Profit Taking", label: "Profit Taking", color: "text-profit" },
+  { value: "Discipline", label: "Discipline", color: "text-info" },
+  { value: "General", label: "General", color: "text-foreground-secondary" },
+];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -40,6 +64,13 @@ export default function SettingsPage() {
   const [dailyTarget, setDailyTarget] = useState("");
   const [weeklyTarget, setWeeklyTarget] = useState("");
   const [monthlyTarget, setMonthlyTarget] = useState("");
+
+  // Rule editing state
+  const [editingRule, setEditingRule] = useState<TradingRule | null>(null);
+  const [isAddingRule, setIsAddingRule] = useState(false);
+  const [ruleText, setRuleText] = useState("");
+  const [ruleCategory, setRuleCategory] = useState<RuleCategory>("General");
+  const [isSavingRule, setIsSavingRule] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -135,6 +166,107 @@ export default function SettingsPage() {
       console.error("Error toggling rule:", error);
       toast.error("Failed to update rule");
     }
+  }
+
+  function openEditRule(rule: TradingRule) {
+    setEditingRule(rule);
+    setRuleText(rule.rule_text);
+    setRuleCategory(rule.category || "General");
+  }
+
+  function openAddRule() {
+    setIsAddingRule(true);
+    setRuleText("");
+    setRuleCategory("General");
+  }
+
+  function closeRuleModal() {
+    setEditingRule(null);
+    setIsAddingRule(false);
+    setRuleText("");
+    setRuleCategory("General");
+  }
+
+  async function handleSaveRule() {
+    if (!ruleText.trim()) {
+      toast.error("Please enter a rule");
+      return;
+    }
+
+    setIsSavingRule(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (editingRule) {
+        // Update existing rule
+        const { error } = await supabase
+          .from("trading_rules")
+          .update({
+            rule_text: ruleText.trim(),
+            category: ruleCategory,
+          })
+          .eq("id", editingRule.id);
+
+        if (error) throw error;
+
+        setRules(rules.map((r) =>
+          r.id === editingRule.id
+            ? { ...r, rule_text: ruleText.trim(), category: ruleCategory }
+            : r
+        ));
+        toast.success("Rule updated");
+      } else {
+        // Add new rule
+        const maxSortOrder = Math.max(...rules.map((r) => r.sort_order), 0);
+        const { data, error } = await supabase
+          .from("trading_rules")
+          .insert({
+            user_id: user.id,
+            rule_text: ruleText.trim(),
+            category: ruleCategory,
+            is_default: false,
+            is_active: true,
+            sort_order: maxSortOrder + 1,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) setRules([...rules, data]);
+        toast.success("Rule added");
+      }
+
+      closeRuleModal();
+    } catch (error) {
+      console.error("Error saving rule:", error);
+      toast.error("Failed to save rule");
+    } finally {
+      setIsSavingRule(false);
+    }
+  }
+
+  async function handleDeleteRule(ruleId: string) {
+    if (!confirm("Are you sure you want to delete this rule?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("trading_rules")
+        .delete()
+        .eq("id", ruleId);
+
+      if (error) throw error;
+      setRules(rules.filter((r) => r.id !== ruleId));
+      toast.success("Rule deleted");
+    } catch (error) {
+      console.error("Error deleting rule:", error);
+      toast.error("Failed to delete rule");
+    }
+  }
+
+  function getCategoryColor(category: RuleCategory | undefined): string {
+    const cat = RULE_CATEGORIES.find((c) => c.value === category);
+    return cat?.color || "text-foreground-secondary";
   }
 
   async function handleLogout() {
@@ -311,30 +443,128 @@ export default function SettingsPage() {
 
       {/* Trading Rules */}
       <BaseCard>
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-info" />
-          <h2 className="text-lg font-semibold">Trading Rules</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-info" />
+            <h2 className="text-lg font-semibold">Trading Rules</h2>
+          </div>
+          <Button variant="outline" size="sm" onClick={openAddRule}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Rule
+          </Button>
         </div>
         <p className="text-sm text-foreground-secondary mb-4">
           Enable or disable rules for your pre-market ritual
         </p>
         <div className="space-y-3">
-          {rules.map((rule) => (
+          {rules.map((rule, index) => (
             <div
               key={rule.id}
-              className="flex items-center justify-between p-3 bg-background-surface rounded-xl"
+              className="p-3 bg-background-surface rounded-xl"
             >
-              <span className={rule.is_active ? "" : "text-foreground-tertiary"}>
-                {rule.rule_text}
-              </span>
-              <Switch
-                checked={rule.is_active}
-                onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
-              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-foreground-tertiary text-sm font-medium">
+                      {index + 1}.
+                    </span>
+                    <span className={rule.is_active ? "" : "text-foreground-tertiary"}>
+                      {rule.rule_text}
+                    </span>
+                  </div>
+                  <span className={`text-xs ${getCategoryColor(rule.category)}`}>
+                    {rule.category || "General"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditRule(rule)}
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Switch
+                    checked={rule.is_active}
+                    onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
+                  />
+                </div>
+              </div>
             </div>
           ))}
+          {rules.length === 0 && (
+            <p className="text-center text-foreground-tertiary py-4">
+              No trading rules yet. Add your first rule to get started.
+            </p>
+          )}
         </div>
       </BaseCard>
+
+      {/* Edit/Add Rule Dialog */}
+      <Dialog open={!!editingRule || isAddingRule} onOpenChange={closeRuleModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingRule ? "Edit Rule" : "Add New Rule"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Rule Text</Label>
+              <Textarea
+                placeholder="Enter your trading rule..."
+                value={ruleText}
+                onChange={(e) => setRuleText(e.target.value)}
+                className="mt-1.5"
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select value={ruleCategory} onValueChange={(v) => setRuleCategory(v as RuleCategory)}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RULE_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      <span className={cat.color}>{cat.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-3">
+              {editingRule && !editingRule.is_default && (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    handleDeleteRule(editingRule.id);
+                    closeRuleModal();
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              )}
+              <div className="flex-1" />
+              <Button variant="outline" onClick={closeRuleModal}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveRule} disabled={isSavingRule}>
+                {isSavingRule ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-1" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Separator />
 
