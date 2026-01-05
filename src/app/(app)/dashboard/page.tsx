@@ -20,6 +20,7 @@ import {
   Flame,
   Clock,
   Loader2,
+  Shield,
 } from "lucide-react";
 import type { Trade, Profile, DailySession } from "@/types";
 import { formatINR } from "@/lib/utils";
@@ -193,6 +194,29 @@ export default function DashboardPage() {
           </div>
         </BaseCard>
       )}
+
+      {/* Trade Guardian Reminder */}
+      <BaseCard className="bg-gradient-to-r from-brand/20 to-info/10 border-brand/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-brand" />
+            </div>
+            <div>
+              <p className="font-semibold">Before You Trade</p>
+              <p className="text-sm text-foreground-secondary">
+                Use Trade Guardian to validate your next trade
+              </p>
+            </div>
+          </div>
+          <Link href="/trade/assess">
+            <Button size="sm">
+              Start Assessment
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+        </div>
+      </BaseCard>
 
       {/* P&L Hero Card */}
       {todayPnl >= 0 ? (

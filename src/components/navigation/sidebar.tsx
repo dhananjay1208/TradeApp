@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   Home, ClipboardList, Calendar, BarChart3,
-  Flame, Settings, HelpCircle, TrendingUp, LogOut, ChevronUp
+  Flame, Settings, HelpCircle, TrendingUp, LogOut, ChevronUp, Shield
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/ritual", label: "Ritual", icon: Flame },
+  { href: "/trade/assess", label: "Trade Guardian", icon: Shield },
   { href: "/journal", label: "Journal", icon: ClipboardList },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
