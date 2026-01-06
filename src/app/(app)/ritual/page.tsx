@@ -199,14 +199,16 @@ export default function RitualPage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_280px] gap-6">
       {/* Left Sidebar - Wisdom Quotes (hidden on smaller screens) */}
-      <div className="hidden xl:flex flex-col gap-3">
-        <div className="sticky top-6 space-y-3">
-          <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1">
+      <div className="hidden xl:block">
+        <div className="sticky top-6 h-[calc(100vh-6rem)] flex flex-col">
+          <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1 mb-4">
             Trading Wisdom
           </h3>
-          {WISDOM_QUOTES.left.map((item, index) => (
-            <WisdomCard key={index} {...item} />
-          ))}
+          <div className="flex-1 flex flex-col justify-between">
+            {WISDOM_QUOTES.left.map((item, index) => (
+              <WisdomCard key={index} {...item} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -395,14 +397,16 @@ export default function RitualPage() {
       </div>
 
       {/* Right Sidebar - More Wisdom Quotes (hidden on smaller screens) */}
-      <div className="hidden xl:flex flex-col gap-3">
-        <div className="sticky top-6 space-y-3">
-          <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1">
+      <div className="hidden xl:block">
+        <div className="sticky top-6 h-[calc(100vh-6rem)] flex flex-col">
+          <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1 mb-4">
             Trader Mindset
           </h3>
-          {WISDOM_QUOTES.right.map((item, index) => (
-            <WisdomCard key={index} {...item} />
-          ))}
+          <div className="flex-1 flex flex-col justify-between">
+            {WISDOM_QUOTES.right.map((item, index) => (
+              <WisdomCard key={index} {...item} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
