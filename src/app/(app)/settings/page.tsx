@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useSettingsData, useUser } from "@/hooks/use-data";
 import { BaseCard } from "@/components/ui/card-variants";
 import { Button } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { SettingsSkeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +39,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import type { Profile, TradingRule, RuleCategory } from "@/types";
+import type { TradingRule, RuleCategory } from "@/types";
 
 const RULE_CATEGORIES: { value: RuleCategory; label: string; color: string }[] = [
   { value: "Risk Management", label: "Risk Management", color: "text-warning" },
@@ -49,11 +51,11 @@ const RULE_CATEGORIES: { value: RuleCategory; label: string; color: string }[] =
 export default function SettingsPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { user, isLoading: userLoading } = useUser();
+  const { profile, rules, isLoading, mutate } = useSettingsData();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [rules, setRules] = useState<TradingRule[]>([]);
+  const [formInitialized, setFormInitialized] = useState(false);
 
   // Form state
   const [fullName, setFullName] = useState("");
@@ -72,53 +74,27 @@ export default function SettingsPage() {
   const [ruleCategory, setRuleCategory] = useState<RuleCategory>("General");
   const [isSavingRule, setIsSavingRule] = useState(false);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadSettings();
-  }, []);
-
-  async function loadSettings() {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      // Load profile
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profileData) {
-        setProfile(profileData);
-        setFullName(profileData.full_name || "");
-        setTradingCapital(profileData.trading_capital?.toString() || "100000");
-        setDailyLossLimit(profileData.daily_loss_limit?.toString() || "5000");
-        setPerTradeRisk(profileData.per_trade_risk?.toString() || "1000");
-        setMaxTradesPerDay(profileData.max_trades_per_day?.toString() || "10");
-        setDailyTarget(profileData.daily_target?.toString() || "2000");
-        setWeeklyTarget(profileData.weekly_target?.toString() || "8000");
-        setMonthlyTarget(profileData.monthly_target?.toString() || "30000");
-      }
-
-      // Load rules
-      const { data: rulesData } = await supabase
-        .from("trading_rules")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("sort_order", { ascending: true });
-
-      if (rulesData) setRules(rulesData);
-    } catch (error) {
-      console.error("Error loading settings:", error);
-      toast.error("Failed to load settings");
-    } finally {
-      setIsLoading(false);
+    if (!userLoading && !user) {
+      router.push("/login");
     }
-  }
+  }, [user, userLoading, router]);
+
+  // Initialize form state when profile loads
+  useEffect(() => {
+    if (profile && !formInitialized) {
+      setFullName(profile.full_name || "");
+      setTradingCapital(profile.trading_capital?.toString() || "100000");
+      setDailyLossLimit(profile.daily_loss_limit?.toString() || "5000");
+      setPerTradeRisk(profile.per_trade_risk?.toString() || "1000");
+      setMaxTradesPerDay(profile.max_trades_per_day?.toString() || "10");
+      setDailyTarget(profile.daily_target?.toString() || "2000");
+      setWeeklyTarget(profile.weekly_target?.toString() || "8000");
+      setMonthlyTarget(profile.monthly_target?.toString() || "30000");
+      setFormInitialized(true);
+    }
+  }, [profile, formInitialized]);
 
   async function handleSaveProfile() {
     setIsSaving(true);
@@ -142,6 +118,7 @@ export default function SettingsPage() {
 
       if (error) throw error;
       toast.success("Settings saved successfully");
+      mutate(); // Refresh cached data
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Failed to save settings");
@@ -158,10 +135,7 @@ export default function SettingsPage() {
         .eq("id", ruleId);
 
       if (error) throw error;
-
-      setRules(rules.map((r) =>
-        r.id === ruleId ? { ...r, is_active: isActive } : r
-      ));
+      mutate(); // Refresh cached data
     } catch (error) {
       console.error("Error toggling rule:", error);
       toast.error("Failed to update rule");
@@ -209,17 +183,11 @@ export default function SettingsPage() {
           .eq("id", editingRule.id);
 
         if (error) throw error;
-
-        setRules(rules.map((r) =>
-          r.id === editingRule.id
-            ? { ...r, rule_text: ruleText.trim(), category: ruleCategory }
-            : r
-        ));
         toast.success("Rule updated");
       } else {
         // Add new rule
         const maxSortOrder = Math.max(...rules.map((r) => r.sort_order), 0);
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from("trading_rules")
           .insert({
             user_id: user.id,
@@ -228,15 +196,13 @@ export default function SettingsPage() {
             is_default: false,
             is_active: true,
             sort_order: maxSortOrder + 1,
-          })
-          .select()
-          .single();
+          });
 
         if (error) throw error;
-        if (data) setRules([...rules, data]);
         toast.success("Rule added");
       }
 
+      mutate(); // Refresh cached data
       closeRuleModal();
     } catch (error) {
       console.error("Error saving rule:", error);
@@ -256,7 +222,7 @@ export default function SettingsPage() {
         .eq("id", ruleId);
 
       if (error) throw error;
-      setRules(rules.filter((r) => r.id !== ruleId));
+      mutate(); // Refresh cached data
       toast.success("Rule deleted");
     } catch (error) {
       console.error("Error deleting rule:", error);
@@ -274,12 +240,9 @@ export default function SettingsPage() {
     router.push("/login");
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
-    );
+  // Show skeleton on first load only (cached data shows instantly)
+  if (isLoading && !profile) {
+    return <SettingsSkeleton />;
   }
 
   return (

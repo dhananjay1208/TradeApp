@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useTrades, useUser } from "@/hooks/use-data";
 import { BaseCard, ProfitCard, LossCard } from "@/components/ui/card-variants";
 import { Button } from "@/components/ui/button-variants";
 import { Badge, DirectionTag } from "@/components/ui/badge-variants";
 import { Input } from "@/components/ui/input";
+import { JournalSkeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -49,10 +51,9 @@ const EMOTIONS: { value: EmotionType; label: string }[] = [
 export default function JournalPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { user, isLoading: userLoading } = useUser();
+  const { trades, isLoading, mutate: refreshTrades } = useTrades();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [filteredTrades, setFilteredTrades] = useState<Trade[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -63,40 +64,15 @@ export default function JournalPage() {
   const [exitNotes, setExitNotes] = useState("");
   const [isClosing, setIsClosing] = useState(false);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadTrades();
-  }, []);
-
-  useEffect(() => {
-    filterTrades();
-  }, [trades, searchQuery, statusFilter]);
-
-  async function loadTrades() {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("entry_time", { ascending: false });
-
-      if (error) throw error;
-      setTrades(data || []);
-    } catch (error) {
-      console.error("Error loading trades:", error);
-      toast.error("Failed to load trades");
-    } finally {
-      setIsLoading(false);
+    if (!userLoading && !user) {
+      router.push("/login");
     }
-  }
+  }, [user, userLoading, router]);
 
-  function filterTrades() {
+  // Filter trades using useMemo for performance
+  const filteredTrades = useMemo(() => {
     let filtered = [...trades];
 
     if (searchQuery) {
@@ -109,8 +85,8 @@ export default function JournalPage() {
       filtered = filtered.filter((trade) => trade.status === statusFilter);
     }
 
-    setFilteredTrades(filtered);
-  }
+    return filtered;
+  }, [trades, searchQuery, statusFilter]);
 
   async function handleCloseTrade() {
     if (!closingTrade || !exitPrice) {
@@ -147,7 +123,7 @@ export default function JournalPage() {
       setExitPrice("");
       setEmotionExit("");
       setExitNotes("");
-      loadTrades();
+      refreshTrades();
     } catch (error) {
       console.error("Error closing trade:", error);
       toast.error("Failed to close trade");
@@ -163,7 +139,7 @@ export default function JournalPage() {
       const { error } = await supabase.from("trades").delete().eq("id", tradeId);
       if (error) throw error;
       toast.success("Trade deleted");
-      loadTrades();
+      refreshTrades();
     } catch (error) {
       console.error("Error deleting trade:", error);
       toast.error("Failed to delete trade");
@@ -177,12 +153,9 @@ export default function JournalPage() {
   const winningTrades = closedTrades.filter((t) => (t.pnl || 0) > 0).length;
   const winRate = closedTrades.length > 0 ? (winningTrades / closedTrades.length) * 100 : 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
-    );
+  // Show skeleton on first load only (cached data shows instantly)
+  if (isLoading && trades.length === 0) {
+    return <JournalSkeleton />;
   }
 
   return (

@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useRitualData, useUser } from "@/hooks/use-data";
 import { BaseCard } from "@/components/ui/card-variants";
 import { Button } from "@/components/ui/button-variants";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { RitualSkeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Quote,
@@ -17,7 +19,7 @@ import {
   Moon,
   Loader2
 } from "lucide-react";
-import type { TradingRule, Quote as QuoteType, MoodType } from "@/types";
+import type { MoodType } from "@/types";
 import { formatINR } from "@/lib/utils";
 
 const MOODS: { value: MoodType; label: string; emoji: string; color: string }[] = [
@@ -31,88 +33,23 @@ const MOODS: { value: MoodType; label: string; emoji: string; color: string }[] 
 export default function RitualPage() {
   const router = useRouter();
   const supabase = createClient();
+  const { user, isLoading: userLoading } = useUser();
+  const { profile, rules, todaySession, quote, isLoading, mutate } = useRitualData();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [quote, setQuote] = useState<QuoteType | null>(null);
-  const [rules, setRules] = useState<TradingRule[]>([]);
   const [checkedRules, setCheckedRules] = useState<Set<string>>(new Set());
   const [selectedMood, setSelectedMood] = useState<MoodType | null>(null);
   const [marketNotes, setMarketNotes] = useState("");
-  const [profile, setProfile] = useState<{
-    daily_loss_limit: number;
-    per_trade_risk: number;
-    max_trades_per_day: number;
-    trading_capital: number;
-  } | null>(null);
-  const [ritualAlreadyDone, setRitualAlreadyDone] = useState(false);
 
+  // Check if ritual already done
+  const ritualAlreadyDone = todaySession?.session_started_at !== null;
+
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadData();
-  }, []);
-
-  async function loadData() {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      // Check if ritual already done today
-      const today = new Date().toISOString().split("T")[0];
-      const { data: existingSession } = await supabase
-        .from("daily_sessions")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("session_date", today)
-        .single();
-
-      if (existingSession?.session_started_at) {
-        setRitualAlreadyDone(true);
-      }
-
-      // Load profile
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("daily_loss_limit, per_trade_risk, max_trades_per_day, trading_capital")
-        .eq("id", user.id)
-        .single();
-
-      if (profileData) {
-        setProfile(profileData);
-      }
-
-      // Load random quote
-      const { data: quotes } = await supabase
-        .from("quotes")
-        .select("*")
-        .eq("is_active", true);
-
-      if (quotes && quotes.length > 0) {
-        const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
-        setQuote(randomQuote);
-      }
-
-      // Load trading rules
-      const { data: rulesData } = await supabase
-        .from("trading_rules")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true });
-
-      if (rulesData) {
-        setRules(rulesData);
-      }
-    } catch (error) {
-      console.error("Error loading ritual data:", error);
-      toast.error("Failed to load ritual data");
-    } finally {
-      setIsLoading(false);
+    if (!userLoading && !user) {
+      router.push("/login");
     }
-  }
+  }, [user, userLoading, router]);
 
   function toggleRule(ruleId: string) {
     setCheckedRules((prev) => {
@@ -156,6 +93,7 @@ export default function RitualPage() {
       if (error) throw error;
 
       toast.success("Ritual complete! Ready to trade with discipline.");
+      mutate(); // Refresh cached data
       router.push("/dashboard");
     } catch (error) {
       console.error("Error starting trading session:", error);
@@ -165,12 +103,9 @@ export default function RitualPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
-    );
+  // Show skeleton on first load only (cached data shows instantly)
+  if (isLoading && !profile) {
+    return <RitualSkeleton />;
   }
 
   if (ritualAlreadyDone) {

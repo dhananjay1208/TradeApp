@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useTrades, useUser } from "@/hooks/use-data";
 import { BaseCard, ProfitCard, LossCard } from "@/components/ui/card-variants";
 import { Button } from "@/components/ui/button-variants";
-import { toast } from "sonner";
+import { AnalyticsSkeleton } from "@/components/ui/skeleton";
 import {
   ChevronLeft,
   ChevronRight,
@@ -13,7 +13,6 @@ import {
   TrendingDown,
   Target,
   BarChart3,
-  Loader2,
 } from "lucide-react";
 import {
   AreaChart,
@@ -29,7 +28,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import type { Trade } from "@/types";
 import { formatINR } from "@/lib/utils";
 
 // Chart colors
@@ -49,46 +47,32 @@ interface TooltipPayload {
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const supabase = createClient();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const { user, isLoading: userLoading } = useUser();
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // Calculate date range for current month
+  const startOfMonth = useMemo(() =>
+    new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString(),
+    [currentMonth]
+  );
+  const endOfMonth = useMemo(() =>
+    new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59).toISOString(),
+    [currentMonth]
+  );
+
+  // Fetch trades for the selected month
+  const { trades, isLoading } = useTrades({
+    status: "CLOSED",
+    startDate: startOfMonth,
+    endDate: endOfMonth,
+  });
+
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadTrades();
-  }, [currentMonth]);
-
-  async function loadTrades() {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59);
-
-      const { data, error } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("status", "CLOSED")
-        .gte("entry_time", startOfMonth.toISOString())
-        .lte("entry_time", endOfMonth.toISOString())
-        .order("entry_time", { ascending: true });
-
-      if (error) throw error;
-      setTrades(data || []);
-    } catch (error) {
-      console.error("Error loading trades:", error);
-      toast.error("Failed to load analytics data");
-    } finally {
-      setIsLoading(false);
+    if (!userLoading && !user) {
+      router.push("/login");
     }
-  }
+  }, [user, userLoading, router]);
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -194,12 +178,9 @@ export default function AnalyticsPage() {
     return null;
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
-    );
+  // Show skeleton on first load only (cached data shows instantly)
+  if (isLoading && trades.length === 0) {
+    return <AnalyticsSkeleton />;
   }
 
   return (

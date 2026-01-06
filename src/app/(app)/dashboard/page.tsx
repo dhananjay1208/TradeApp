@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
+import { useDashboardData, useUser } from "@/hooks/use-data";
 import { BaseCard, ProfitCard, LossCard } from "@/components/ui/card-variants";
 import { Button } from "@/components/ui/button-variants";
 import { Badge, StatusIndicator } from "@/components/ui/badge-variants";
 import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
+import { DashboardSkeleton } from "@/components/ui/skeleton";
+import { useEffect } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -19,93 +19,25 @@ import {
   Trophy,
   Flame,
   Clock,
-  Loader2,
   Shield,
 } from "lucide-react";
-import type { Trade, Profile, DailySession } from "@/types";
 import { formatINR } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const { user, isLoading: userLoading } = useUser();
+  const { profile, todaySession, todayTrades, recentTrades, isLoading } = useDashboardData();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [todaySession, setTodaySession] = useState<DailySession | null>(null);
-  const [todayTrades, setTodayTrades] = useState<Trade[]>([]);
-  const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
-
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  async function loadDashboardData() {
-    setIsLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
-      }
-
-      const today = new Date().toISOString().split("T")[0];
-
-      // Load profile
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profileData) setProfile(profileData);
-
-      // Load today's session
-      const { data: sessionData } = await supabase
-        .from("daily_sessions")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("session_date", today)
-        .single();
-
-      if (sessionData) setTodaySession(sessionData);
-
-      // Load today's trades
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const { data: todayTradesData } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("user_id", user.id)
-        .gte("entry_time", startOfDay.toISOString())
-        .order("entry_time", { ascending: false });
-
-      if (todayTradesData) setTodayTrades(todayTradesData);
-
-      // Load recent trades (last 5)
-      const { data: recentData } = await supabase
-        .from("trades")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("entry_time", { ascending: false })
-        .limit(5);
-
-      if (recentData) setRecentTrades(recentData);
-
-    } catch (error) {
-      console.error("Error loading dashboard:", error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setIsLoading(false);
+    if (!userLoading && !user) {
+      router.push("/login");
     }
-  }
+  }, [user, userLoading, router]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-brand" />
-      </div>
-    );
+  // Show skeleton while loading (only on first load, cached data shows instantly)
+  if (isLoading && !profile) {
+    return <DashboardSkeleton />;
   }
 
   // Calculate stats
