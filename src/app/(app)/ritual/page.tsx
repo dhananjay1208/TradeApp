@@ -181,15 +181,17 @@ export default function RitualPage() {
     border: string;
     iconColor: string;
   }) => (
-    <BaseCard className={`bg-gradient-to-br ${gradient} ${border} h-full`}>
-      <div className="flex flex-col h-full">
-        <div className={`w-10 h-10 rounded-xl bg-background-card/50 flex items-center justify-center mb-3`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
+    <BaseCard className={`bg-gradient-to-br ${gradient} ${border} !p-3`}>
+      <div className="flex items-start gap-2.5">
+        <div className={`w-8 h-8 rounded-lg bg-background-card/50 flex items-center justify-center flex-shrink-0`}>
+          <Icon className={`w-4 h-4 ${iconColor}`} />
         </div>
-        <p className="text-sm italic text-foreground-primary mb-3 flex-1">
-          &ldquo;{quote}&rdquo;
-        </p>
-        <p className="text-xs text-foreground-tertiary font-medium">— {author}</p>
+        <div className="min-w-0">
+          <p className="text-xs italic text-foreground-primary leading-relaxed">
+            &ldquo;{quote}&rdquo;
+          </p>
+          <p className="text-[10px] text-foreground-tertiary font-medium mt-1.5">— {author}</p>
+        </div>
       </div>
     </BaseCard>
   );
@@ -197,8 +199,8 @@ export default function RitualPage() {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_280px] gap-6">
       {/* Left Sidebar - Wisdom Quotes (hidden on smaller screens) */}
-      <div className="hidden xl:flex flex-col gap-4">
-        <div className="sticky top-6 space-y-4">
+      <div className="hidden xl:flex flex-col gap-3">
+        <div className="sticky top-6 space-y-3">
           <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1">
             Trading Wisdom
           </h3>
@@ -393,8 +395,8 @@ export default function RitualPage() {
       </div>
 
       {/* Right Sidebar - More Wisdom Quotes (hidden on smaller screens) */}
-      <div className="hidden xl:flex flex-col gap-4">
-        <div className="sticky top-6 space-y-4">
+      <div className="hidden xl:flex flex-col gap-3">
+        <div className="sticky top-6 space-y-3">
           <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1">
             Trader Mindset
           </h3>
