@@ -31,6 +31,14 @@ interface DaySummary {
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Helper to get date string in local timezone (YYYY-MM-DD)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function CalendarPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
@@ -62,12 +70,12 @@ export default function CalendarPage() {
     }
   }, [user, userLoading, router]);
 
-  // Group trades by date
+  // Group trades by date (using local timezone)
   const dailySummaries = useMemo(() => {
     const summaries: Record<string, DaySummary> = {};
 
     trades.forEach((trade) => {
-      const date = new Date(trade.entry_time).toISOString().split("T")[0];
+      const date = formatLocalDate(new Date(trade.entry_time));
       if (!summaries[date]) {
         summaries[date] = { date, pnl: 0, trades: 0, wins: 0, losses: 0 };
       }
@@ -120,12 +128,12 @@ export default function CalendarPage() {
   }, [dailySummaries, trades]);
 
   function handleDayClick(date: Date) {
-    const dateStr = date.toISOString().split("T")[0];
+    const dateStr = formatLocalDate(date);
     const summary = dailySummaries[dateStr];
     if (summary) {
       setSelectedDay(summary);
       const dayTrades = trades.filter(
-        (t) => new Date(t.entry_time).toISOString().split("T")[0] === dateStr
+        (t) => formatLocalDate(new Date(t.entry_time)) === dateStr
       );
       setSelectedDayTrades(dayTrades);
     }
@@ -220,9 +228,9 @@ export default function CalendarPage() {
               return <div key={`empty-${index}`} className="aspect-square" />;
             }
 
-            const dateStr = date.toISOString().split("T")[0];
+            const dateStr = formatLocalDate(date);
             const summary = dailySummaries[dateStr];
-            const isToday = dateStr === new Date().toISOString().split("T")[0];
+            const isToday = dateStr === formatLocalDate(new Date());
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
             return (

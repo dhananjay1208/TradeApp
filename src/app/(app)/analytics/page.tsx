@@ -39,6 +39,14 @@ const COLORS = {
   text: "#9ca3af",
 };
 
+// Helper to get date string in local timezone (YYYY-MM-DD)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 interface TooltipPayload {
   name: string;
   value: number;
@@ -100,12 +108,12 @@ export default function AnalyticsPage() {
     };
   }, [trades]);
 
-  // Daily P&L data with cumulative
+  // Daily P&L data with cumulative (using local timezone)
   const dailyData = useMemo(() => {
     const dailyMap: Record<string, { pnl: number; trades: number }> = {};
 
     trades.forEach((trade) => {
-      const date = new Date(trade.entry_time).toISOString().split("T")[0];
+      const date = formatLocalDate(new Date(trade.entry_time));
       if (!dailyMap[date]) {
         dailyMap[date] = { pnl: 0, trades: 0 };
       }
@@ -116,13 +124,16 @@ export default function AnalyticsPage() {
     const sortedDates = Object.keys(dailyMap).sort();
     let cumulative = 0;
 
-    return sortedDates.map((date) => {
-      cumulative += dailyMap[date].pnl;
+    return sortedDates.map((dateStr) => {
+      cumulative += dailyMap[dateStr].pnl;
+      // Parse the date string back to display format
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const displayDate = new Date(year, month - 1, day).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
       return {
-        date: new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }),
-        pnl: dailyMap[date].pnl,
+        date: displayDate,
+        pnl: dailyMap[dateStr].pnl,
         cumulative,
-        trades: dailyMap[date].trades,
+        trades: dailyMap[dateStr].trades,
       };
     });
   }, [trades]);
