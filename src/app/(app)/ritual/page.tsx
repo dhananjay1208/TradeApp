@@ -108,28 +108,31 @@ export default function RitualPage() {
     return <RitualSkeleton />;
   }
 
-  if (ritualAlreadyDone) {
-    return (
-      <div className="space-y-6">
-        <div className="text-center py-12">
-          <CheckCircle2 className="w-16 h-16 text-profit mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Ritual Complete!</h1>
-          <p className="text-foreground-secondary mb-6">
-            You have already completed your pre-market ritual today.
-          </p>
-          <Button onClick={() => router.push("/dashboard")}>
-            Go to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const greeting = new Date().getHours() < 12 ? "Good Morning" :
                    new Date().getHours() < 17 ? "Good Afternoon" : "Good Evening";
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
+      {/* Success Banner when ritual is complete */}
+      {ritualAlreadyDone && (
+        <BaseCard className="bg-gradient-to-r from-profit/20 to-profit/5 border-profit/30">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-profit/20 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-profit" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-profit">Ritual Complete!</p>
+              <p className="text-sm text-foreground-secondary">
+                You have completed your pre-market ritual today. Review your rules below.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")}>
+              Dashboard
+            </Button>
+          </div>
+        </BaseCard>
+      )}
+
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
@@ -141,7 +144,7 @@ export default function RitualPage() {
           <h1 className="text-2xl font-bold">{greeting}!</h1>
         </div>
         <p className="text-foreground-secondary">
-          Complete your pre-market ritual before trading
+          {ritualAlreadyDone ? "Review your trading rules and mindset" : "Complete your pre-market ritual before trading"}
         </p>
       </div>
 
@@ -259,32 +262,36 @@ export default function RitualPage() {
         />
       </BaseCard>
 
-      {/* Start Trading Button */}
-      <Button
-        onClick={handleStartTrading}
-        disabled={!canStart || isSubmitting}
-        className="w-full h-14 text-lg"
-        size="lg"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin mr-2" />
-            Starting...
-          </>
-        ) : (
-          <>
-            <TrendingUp className="w-5 h-5 mr-2" />
-            I Am Ready to Trade
-          </>
-        )}
-      </Button>
+      {/* Start Trading Button - only show if not already done */}
+      {!ritualAlreadyDone && (
+        <>
+          <Button
+            onClick={handleStartTrading}
+            disabled={!canStart || isSubmitting}
+            className="w-full h-14 text-lg"
+            size="lg"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Starting...
+              </>
+            ) : (
+              <>
+                <TrendingUp className="w-5 h-5 mr-2" />
+                I Am Ready to Trade
+              </>
+            )}
+          </Button>
 
-      {!canStart && (
-        <p className="text-center text-sm text-foreground-tertiary">
-          {!allRulesChecked && "Acknowledge all rules"}
-          {!allRulesChecked && !selectedMood && " and "}
-          {!selectedMood && "select your mood"} to continue
-        </p>
+          {!canStart && (
+            <p className="text-center text-sm text-foreground-tertiary">
+              {!allRulesChecked && "Acknowledge all rules"}
+              {!allRulesChecked && !selectedMood && " and "}
+              {!selectedMood && "select your mood"} to continue
+            </p>
+          )}
+        </>
       )}
     </div>
   );
