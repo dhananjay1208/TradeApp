@@ -17,10 +17,71 @@ import {
   TrendingUp,
   Sun,
   Moon,
-  Loader2
+  Loader2,
+  Shield,
+  Target,
+  Brain,
+  Award,
+  Lightbulb,
 } from "lucide-react";
 import type { MoodType } from "@/types";
 import { formatINR } from "@/lib/utils";
+
+// Famous Trading Quotes for sidebar cards
+const WISDOM_QUOTES = {
+  left: [
+    {
+      quote: "The goal of a successful trader is to make the best trades. Money is secondary.",
+      author: "Alexander Elder",
+      icon: Target,
+      gradient: "from-brand/20 to-brand/5",
+      border: "border-brand/30",
+      iconColor: "text-brand",
+    },
+    {
+      quote: "Risk comes from not knowing what you are doing.",
+      author: "Warren Buffett",
+      icon: Shield,
+      gradient: "from-warning/20 to-warning/5",
+      border: "border-warning/30",
+      iconColor: "text-warning",
+    },
+    {
+      quote: "The elements of good trading are: cutting losses, cutting losses, and cutting losses.",
+      author: "Ed Seykota",
+      icon: AlertTriangle,
+      gradient: "from-loss/20 to-loss/5",
+      border: "border-loss/30",
+      iconColor: "text-loss",
+    },
+  ],
+  right: [
+    {
+      quote: "Be fearful when others are greedy and greedy when others are fearful.",
+      author: "Warren Buffett",
+      icon: Brain,
+      gradient: "from-info/20 to-info/5",
+      border: "border-info/30",
+      iconColor: "text-info",
+    },
+    {
+      quote: "Discipline is the bridge between goals and accomplishment.",
+      author: "Jim Rohn",
+      icon: Award,
+      gradient: "from-profit/20 to-profit/5",
+      border: "border-profit/30",
+      iconColor: "text-profit",
+    },
+    {
+      quote: "It's not whether you're right or wrong, but how much you make when right and lose when wrong.",
+      author: "George Soros",
+      icon: Lightbulb,
+      gradient: "from-purple-500/20 to-purple-500/5",
+      border: "border-purple-500/30",
+      iconColor: "text-purple-400",
+    },
+  ],
+};
 
 const MOODS: { value: MoodType; label: string; emoji: string; color: string }[] = [
   { value: "EXCELLENT", label: "Excellent", emoji: "🔥", color: "bg-profit/20 border-profit text-profit" },
@@ -111,42 +172,78 @@ export default function RitualPage() {
   const greeting = new Date().getHours() < 12 ? "Good Morning" :
                    new Date().getHours() < 17 ? "Good Afternoon" : "Good Evening";
 
-  return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      {/* Success Banner when ritual is complete */}
-      {ritualAlreadyDone && (
-        <BaseCard className="bg-gradient-to-r from-profit/20 to-profit/5 border-profit/30">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-profit/20 flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-profit" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-profit">Ritual Complete!</p>
-              <p className="text-sm text-foreground-secondary">
-                You have completed your pre-market ritual today. Review your rules below.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")}>
-              Dashboard
-            </Button>
-          </div>
-        </BaseCard>
-      )}
-
-      {/* Header */}
-      <div className="text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          {new Date().getHours() < 17 ? (
-            <Sun className="w-6 h-6 text-warning" />
-          ) : (
-            <Moon className="w-6 h-6 text-info" />
-          )}
-          <h1 className="text-2xl font-bold">{greeting}!</h1>
+  // Wisdom Quote Card Component
+  const WisdomCard = ({ quote, author, icon: Icon, gradient, border, iconColor }: {
+    quote: string;
+    author: string;
+    icon: React.ElementType;
+    gradient: string;
+    border: string;
+    iconColor: string;
+  }) => (
+    <BaseCard className={`bg-gradient-to-br ${gradient} ${border} h-full`}>
+      <div className="flex flex-col h-full">
+        <div className={`w-10 h-10 rounded-xl bg-background-card/50 flex items-center justify-center mb-3`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
-        <p className="text-foreground-secondary">
-          {ritualAlreadyDone ? "Review your trading rules and mindset" : "Complete your pre-market ritual before trading"}
+        <p className="text-sm italic text-foreground-primary mb-3 flex-1">
+          &ldquo;{quote}&rdquo;
         </p>
+        <p className="text-xs text-foreground-tertiary font-medium">— {author}</p>
       </div>
+    </BaseCard>
+  );
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_280px] gap-6">
+      {/* Left Sidebar - Wisdom Quotes (hidden on smaller screens) */}
+      <div className="hidden xl:flex flex-col gap-4">
+        <div className="sticky top-6 space-y-4">
+          <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1">
+            Trading Wisdom
+          </h3>
+          {WISDOM_QUOTES.left.map((item, index) => (
+            <WisdomCard key={index} {...item} />
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="space-y-6">
+        {/* Success Banner when ritual is complete */}
+        {ritualAlreadyDone && (
+          <BaseCard className="bg-gradient-to-r from-profit/20 to-profit/5 border-profit/30">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-profit/20 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-profit" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-profit">Ritual Complete!</p>
+                <p className="text-sm text-foreground-secondary">
+                  You have completed your pre-market ritual today. Review your rules below.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => router.push("/dashboard")}>
+                Dashboard
+              </Button>
+            </div>
+          </BaseCard>
+        )}
+
+        {/* Header */}
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            {new Date().getHours() < 17 ? (
+              <Sun className="w-6 h-6 text-warning" />
+            ) : (
+              <Moon className="w-6 h-6 text-info" />
+            )}
+            <h1 className="text-2xl font-bold">{greeting}!</h1>
+          </div>
+          <p className="text-foreground-secondary">
+            {ritualAlreadyDone ? "Review your trading rules and mindset" : "Complete your pre-market ritual before trading"}
+          </p>
+        </div>
 
       {/* Motivational Quote */}
       {quote && (
@@ -293,6 +390,19 @@ export default function RitualPage() {
           )}
         </>
       )}
+      </div>
+
+      {/* Right Sidebar - More Wisdom Quotes (hidden on smaller screens) */}
+      <div className="hidden xl:flex flex-col gap-4">
+        <div className="sticky top-6 space-y-4">
+          <h3 className="text-xs font-semibold text-foreground-tertiary uppercase tracking-wider px-1">
+            Trader Mindset
+          </h3>
+          {WISDOM_QUOTES.right.map((item, index) => (
+            <WisdomCard key={index} {...item} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
